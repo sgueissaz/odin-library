@@ -1,0 +1,126 @@
+:root {
+    --light-green: hsl(122, 100%, 94%);
+    --dark-green: hsl(122, 100%, 74%);
+    --light-red: hsl(0, 100%, 94%);
+    --dark-red:hsl(0, 100%, 74%);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Verdana, Geneva, sans-serif;
+}
+
+body {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas: 
+    "new-book" 
+    "list-book";
+    padding: 2rem;
+    gap: 2rem;
+}
+
+.card {
+    background-color: white;
+    color: black;
+    border: 0.1rem solid black;
+    border-radius: 1rem;
+    box-shadow: 0.1rem 0.1rem black;
+    padding: 1rem;
+}
+
+.card.hover:hover {
+    background-color: black;
+    color: white;
+}
+
+.new-book {
+    grid-area: new-book;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.5rem 2rem;
+    padding: 1.5rem;
+}
+
+input[type="checkbox"] {
+  justify-self: start;
+}
+
+.new-book > button {
+    justify-self: left;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+}
+
+.list-book {
+    grid-area: list-book;
+    display: grid;
+    gap: 1rem;
+}
+
+.book-card {
+    display: grid;
+    gap: 1rem;
+}
+
+.book-content {
+    justify-self: start;
+}
+
+.book-control {
+    justify-self: end;
+}
+
+.book-content, .book-control {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.book-control> button {
+    justify-self: left;
+    padding: 0.5rem 1rem;
+    font-weight: bold;
+}
+
+.book-title {
+    font-weight: bold;
+}
+
+.book-author {
+    font-style: italic;
+}
+
+.add {
+    background-color: var(--light-green);
+}
+
+.add:hover {
+    background-color: var(--dark-green);
+}
+
+.remove {
+    background-color: var(--light-red);
+}
+
+.remove:hover {
+    background-color: var(--dark-red);
+}
+
+@media only screen and (min-width: 600px) {
+    .new-book {
+        grid-template-columns: 1fr 2.5fr;
+    }
+}
+
+@media only screen and (min-width: 1200px) {
+    body {
+        grid-template-columns: 1fr 2fr 1fr;
+        grid-template-areas: 
+        "margin-left new-book margin-right" 
+        "margin-left list-book margin-right";
+    }
+}
