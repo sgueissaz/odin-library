@@ -1,163 +1,230 @@
-const state = {
-    library: [],
-}
+class Book {
+    constructor(title, author, pages, read) {
+        this.id = crypto.randomUUID();
+        this.title = title;
+        this.author = author;
+        this.pages = pages;
+        this.read = read;
+    }
 
-function Book(title, author, pages, read) {
-    this.id = crypto.randomUUID();
-    this.title = title;
-    this.author = author;
-    this.pages = pages;
-    this.read = read;
-}
-
-function addBookToLibrary(title, author, pages, read) {
-    const book = new Book(title, author, pages, read);
-    state.library.push(book);
-    return book;
-}
-
-function removeBookFromLibrary(id) {
-    state.library = state.library.filter((book) => book.id != id);
-}
-
-function toggleReadFromLibrary(id) {
-    const index = state.library.findIndex(book => book.id === id);
-    if (index != -1) {
-        const book = state.library[index];
-        book.read = !book.read;
-        return book;
+    toggleRead() {
+        this.read = !this.read;
     }
 }
 
-const ui = {
-    new_book: document.getElementById('new-book'),
-    title: document.getElementById('title'),
-    author: document.getElementById('author'),
-    pages: document.getElementById('pages'),
-    read: document.getElementById('read'),
-    list_book: document.getElementById('list-book'),
-}
-
-function addContentToCard(card, book) {
-    const content = document.createElement('div');
-    content.classList.add('book-content')
-
-    const title = document.createElement('div');
-    title.classList.add('book-title');
-    title.textContent = book.title;
-
-    const author = document.createElement('div');
-    author.classList.add('book-author');
-    author.textContent = book.author;
-
-    const pages = document.createElement('div');
-    pages.classList.add('book-pages');
-    pages.textContent = `${book.pages} pages`;
-
-    content.appendChild(title);
-    content.appendChild(author);
-    content.appendChild(pages);
-
-    card.appendChild(content);
-}
-
-function addControlToCard(card, book) {
-    const control = document.createElement('div');
-    control.classList.add('book-control')
-
-    const read = document.createElement('button');
-    read.dataset.id = book.id;
-    read.classList.add('book-read');
-    read.classList.add('card');
-    if (book.read) {
-        read.dataset.action = 'unread';
-        read.classList.add('remove');
-        read.textContent = 'Unread';
-    } else {
-        read.dataset.action = 'read';
-        read.classList.add('add');
-        read.textContent = 'Read';
+class Library {
+    #library = [];
+    #listeners = {
+        add: new Set(),
+        remove: new Set(),
+        toggleRead: new Set(),
     }
-    read.type = 'submit';
 
-    const remove = document.createElement('button');
-    remove.dataset.id = book.id;
-    remove.dataset.action = 'remove';
-    remove.classList.add('card');
-    remove.classList.add('remove');
-    remove.textContent = 'remove';
-    remove.type = 'submit';
+    subscribeToAdd(fn) {
+        this.#listeners.add.add(fn);
+    }
 
-    control.appendChild(read);
-    control.appendChild(remove);
+    subscribeToRemove(fn) {
+        this.#listeners.remove.add(fn);
+    }
+
+    subscribeToToggleRead(fn) {
+        this.#listeners.toggleRead.add(fn);
+    }
     
-
-    card.appendChild(control);
-}
-
-function addBookToCard(card, book) {
-    addContentToCard(card, book);
-    addControlToCard(card, book);
-}
-
-function addBookToListBook(book) {
-    const card = document.createElement('div');
-    card.id = book.id;
-    card.classList.add('card');
-    card.classList.add('book-card');
-
-    addBookToCard(card, book);
-
-    ui.list_book.appendChild(card);
-}
-
-function removeBookFromListBook(id) {
-    const book = document.getElementById(id);
-    ui.list_book.removeChild(book);
-}
-
-function updateBookFromListBook(book) {
-    const card = document.getElementById(book.id);
-    card.innerHTML = "";
-
-    addBookToCard(card, book);
-}
-
-function resetForm() {
-    ui.title.value = "";
-    ui.author.value = "";
-    ui.pages.value = "";
-    ui.read.checked = false;
-}
-
-ui.new_book.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const book = addBookToLibrary(
-        ui.title.value,
-        ui.author.value,
-        ui.pages.valueAsNumber,
-        ui.read.checked,
-    );
-    addBookToListBook(book);
-    resetForm();
-})
-
-ui.list_book.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const action = e.submitter.dataset.action;
-    const bookId = e.submitter.dataset.id;
-
-    switch (action) {
-        case 'remove':
-            removeBookFromLibrary(bookId);
-            removeBookFromListBook(bookId);
-            break;
-        case 'read':
-        case 'unread':
-            const book = toggleReadFromLibrary(bookId);
-            if (book != undefined) {
-                updateBookFromListBook(book);
-            }
-            break;
+    #notifyAdd(book) {
+        this.#listeners.add.forEach(fn => fn(book));
     }
-})
+
+    #notifyRemove(id) {
+        this.#listeners.remove.forEach(fn => fn(id));
+    }
+
+    #notifyToggleRead(id) {
+        this.#listeners.toggleRead.forEach(fn => fn(id));
+    }
+
+    get(id) {
+        return this.#library.find(book => book.id === id);
+    }
+
+    add(title, author, pages, read) {
+        const book = new Book(title, author, pages, read);
+        this.#library.push(book);
+        this.#notifyAdd(book);
+    }  
+
+    remove(id) {
+        this.#library = this.#library.filter((book) => book.id !== id);
+        this.#notifyRemove(id);
+    }
+
+    toggleRead(id) {
+        this.#library.find(book => book.id === id).toggleRead();
+        this.#notifyToggleRead(id);
+    }
+}
+
+class NewBookFormController {
+    #library;
+    #newBook;
+    #title;
+    #author;
+    #pages;
+    #read;
+
+    constructor(library) {
+        this.#library = library;
+        this.#newBook = document.getElementById('new-book');
+        this.#title = document.getElementById('title');
+        this.#author = document.getElementById('author');
+        this.#pages = document.getElementById('pages');
+        this.#read = document.getElementById('read');
+        this.#bindEvents();
+    }
+
+    #bindEvents() {
+        this.#newBook.addEventListener('submit', e => this.#onSubmit(e));
+    }
+
+    #reset() {
+        this.#title.value = "";
+        this.#author.value = "";
+        this.#pages.value = "";
+        this.#read.checked = false;
+    }
+
+    #onSubmit(e) {
+        e.preventDefault();
+        this.#library.add(
+            this.#title.value,
+            this.#author.value,
+            this.#pages.valueAsNumber,
+            this.#read.checked,
+        );
+        this.#reset();
+    }
+}
+
+class ListBookController {
+    #library;
+    #listBook;
+
+    constructor(library) {
+        this.#library = library;
+        this.#listBook = document.getElementById('list-book');
+        this.#bindEvents();
+        library.subscribeToAdd(book => this.#add(book));
+        library.subscribeToRemove(id => this.#remove(id));
+        library.subscribeToToggleRead(id => this.#toggleRead(id));
+    }
+
+    #bindEvents() {
+        this.#listBook.addEventListener('submit', e => this.#onSubmit(e));
+    }
+
+    #addContentToCard(card, book) {
+        const content = document.createElement('div');
+        content.classList.add('book-content')
+
+        const title = document.createElement('div');
+        title.classList.add('book-title');
+        title.textContent = book.title;
+
+        const author = document.createElement('div');
+        author.classList.add('book-author');
+        author.textContent = book.author;
+
+        const pages = document.createElement('div');
+        pages.classList.add('book-pages');
+        pages.textContent = `${book.pages} pages`;
+
+        content.appendChild(title);
+        content.appendChild(author);
+        content.appendChild(pages);
+
+        card.appendChild(content);
+    }
+
+    #addControlToCard(card, book) {
+        const control = document.createElement('div');
+        control.classList.add('book-control')
+
+        const read = document.createElement('button');
+        read.dataset.id = book.id;
+        read.classList.add('book-read');
+        read.classList.add('card');
+        if (book.read) {
+            read.dataset.action = 'unread';
+            read.classList.add('remove');
+            read.textContent = 'Unread';
+        } else {
+            read.dataset.action = 'read';
+            read.classList.add('add');
+            read.textContent = 'Read';
+        }
+        read.type = 'submit';
+
+        const remove = document.createElement('button');
+        remove.dataset.id = book.id;
+        remove.dataset.action = 'remove';
+        remove.classList.add('card');
+        remove.classList.add('remove');
+        remove.textContent = 'remove';
+        remove.type = 'submit';
+
+        control.appendChild(read);
+        control.appendChild(remove);
+        
+
+        card.appendChild(control);
+    }
+
+    #add(book) {
+        const card = document.createElement('div');
+        card.innerHTML = "";
+        card.id = book.id;
+        card.classList.add('card');
+        card.classList.add('book-card');
+
+        this.#addContentToCard(card, book);
+        this.#addControlToCard(card, book);
+
+        this.#listBook.appendChild(card);
+    }
+
+    #remove(id) {
+        const book = document.getElementById(id);
+        this.#listBook.removeChild(book);
+    }
+
+    #toggleRead(id) {
+        const book = this.#library.get(id);
+        const card = document.getElementById(book.id);
+        card.innerHTML = "";
+
+        this.#addContentToCard(card, book);
+        this.#addControlToCard(card, book);
+    }
+
+    #onSubmit(e) {
+        e.preventDefault();
+
+        const action = e.submitter.dataset.action;
+        const bookId = e.submitter.dataset.id;
+
+        switch (action) {
+            case 'remove':
+                this.#library.remove(bookId);
+                break;
+            case 'read':
+            case 'unread':
+                this.#library.toggleRead(bookId);
+                break;
+        }
+    } 
+}
+
+const library = new Library();
+new NewBookFormController(library);
+new ListBookController(library);
